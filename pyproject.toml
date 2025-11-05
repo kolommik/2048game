@@ -1,0 +1,8 @@
+[project]
+name = "2048game"
+version = "0.1.0"
+description = ""
+authors = [{ name = "kolommik", email = "mikhail.kolomasov@gmail.com" }]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = ["black>=25.9.0", "numpy>=2.3.4"]
