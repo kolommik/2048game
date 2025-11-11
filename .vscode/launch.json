@@ -1,0 +1,72 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "DQN: Quick Test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/dqn/train_dqn.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--mode", "test"
+            ]
+        },
+        {
+            "name": "DQN: Quick Training (2000 episodes)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/dqn/train_dqn.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--episodes", "2000",
+                "--reward-type", "shaped",
+                "--epsilon-decay-steps", "80000",
+                "--buffer-capacity", "20000",
+                "--lr", "5e-5",
+                "--run-name", "quick_improved",
+                "--device", "cuda"
+            ]
+        },
+        {
+            "name": "DQN: Serious Training (5000 episodes)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/dqn/train_dqn.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--episodes", "5000",
+                "--hidden-sizes", "512", "512",
+                "--reward-type", "shaped",
+                "--epsilon-decay-steps", "200000",
+                "--buffer-capacity", "50000",
+                "--lr", "5e-5",
+                "--batch-size", "128",
+                "--run-name", "serious_training",
+                "--device", "cuda"                
+            ]
+        },
+        {
+            "name": "DQN: Baseline (1000 episodes)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/dqn/train_dqn.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--episodes", "1000",
+                "--device", "cuda"
+            ]
+        },
+        {
+            "name": "DQN: Evaluate Model",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/dqn/train_dqn.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--mode", "eval",
+                "--model-path", "./models/run_name/dqn_final.pt",
+                "--eval-games-count", "100"
+            ]
+        }
+    ]
+}
