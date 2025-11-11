@@ -3,3 +3,4 @@ numpy
 pandas
 streamlit
 plotly
+torch>=2.9
