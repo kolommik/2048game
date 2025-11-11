@@ -51,12 +51,14 @@ def train_dqn(
     device="cpu",
     save_dir="./models",
     run_name=None,
+    resume_from=None,
 ):
     """
     Train DQN agent with specified hyperparameters
 
     Args:
         All hyperparameters for DQNAgent and training
+        resume_from: Path to checkpoint to resume from (optional)
     """
     # Create run directory
     if run_name is None:
@@ -70,6 +72,11 @@ def train_dqn(
     print(f"{'='*70}")
     print(f"Save directory: {run_dir}")
     print(f"Device: {device}")
+
+    # Check if resuming from checkpoint
+    if resume_from:
+        print(f"\n🔄 Resuming from checkpoint: {resume_from}")
+
     print("\nHyperparameters:")
     print(f"  Network: hidden_sizes={hidden_sizes}, dropout={dropout}")
     print(f"  Learning: lr={learning_rate}, gamma={gamma}, batch_size={batch_size}")
@@ -102,6 +109,21 @@ def train_dqn(
         device=device,
     )
 
+    # Load checkpoint if resuming
+    if resume_from:
+        try:
+            agent.load(resume_from)
+            print("✅ Checkpoint loaded successfully!")
+            print(f"   Total steps: {agent.total_steps}")
+            print(f"   Training steps: {agent.training_steps}")
+            print(f"   Games played: {agent.games_played}")
+            print(f"   Current epsilon: {agent.epsilon_scheduler.get_epsilon():.4f}")
+            print(f"   Best score so far: {agent.best_score}")
+            print(f"   Best tile so far: {agent.best_tile}\n")
+        except Exception as e:
+            print(f"❌ Error loading checkpoint: {e}")
+            print("Starting from scratch instead...\n")
+
     # Save hyperparameters
     import json
 
@@ -121,6 +143,7 @@ def train_dqn(
         "num_episodes": num_episodes,
         "reward_type": reward_type,
         "device": device,
+        "resumed_from": resume_from,  # ← записываем откуда продолжили
     }
 
     with open(os.path.join(run_dir, "hyperparameters.json"), "w") as f:
@@ -198,7 +221,7 @@ def train_dqn(
         # DQN
         print(
             f"{agent.name:<25}"
-            + f"{final_eval['avg_score']:>12.1f} {final_eval['best_score']:>12} {final_eval['avg_max_tile']:>12.0f}"
+            + f" {final_eval['avg_score']:>12.1f} {final_eval['best_score']:>12} {final_eval['avg_max_tile']:>12.0f}"
         )
 
         # Baselines
@@ -379,6 +402,14 @@ if __name__ == "__main__":
         help="Number of games for model evaluation",
     )
 
+    # Resume training
+    parser.add_argument(
+        "--resume-from",
+        type=str,
+        default=None,
+        help="Path to checkpoint to resume training from",
+    )
+
     args = parser.parse_args()
 
     if args.mode == "test":
@@ -408,6 +439,7 @@ if __name__ == "__main__":
             device=args.device,
             save_dir=args.save_dir,
             run_name=args.run_name,
+            resume_from=args.resume_from,  # ← НОВЫЙ параметр
         )
 
         print(f"\nTraining complete! Models saved in: {run_dir}")
