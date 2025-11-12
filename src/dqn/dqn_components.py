@@ -367,6 +367,7 @@ class RewardShaper:
     def simple_reward(points_gained: int, game_over: bool) -> float:
         """
         Simple reward: just the points from merging tiles
+        Normalized using log scale to keep rewards in reasonable range [-2, 10]
 
         Args:
             points_gained: Points from the move
@@ -375,11 +376,19 @@ class RewardShaper:
         Returns:
             Reward value
         """
-        reward = float(points_gained)
+        # Normalize rewards using log scale to keep them in reasonable range
+        # This prevents Q-value explosion
+        if points_gained > 0:
+            # log2(points) for tile merges:
+            # 4->2, 8->3, 16->4, 32->5, 64->6, 128->7, 256->8, 512->9, 1024->10
+            reward = np.log2(points_gained)
+        else:
+            # Small negative reward for moves without merges
+            reward = -0.5
 
-        # Small penalty for game over to encourage longer games
+        # Penalty for game over to encourage longer games
         if game_over:
-            reward -= 10.0
+            reward -= 5.0
 
         return reward
 
@@ -392,6 +401,7 @@ class RewardShaper:
     ) -> float:
         """
         Shaped reward with additional heuristics
+        Normalized using log scale to keep rewards in reasonable range [-2, 10]
 
         Args:
             points_gained: Points from the move
@@ -403,41 +413,31 @@ class RewardShaper:
             Reward value
         """
         # Base reward from points
-        reward = float(points_gained)
+        if points_gained > 0:
+            reward = np.log2(points_gained)
+        else:
+            reward = -0.5
 
-        # Bonus for empty cells (encourage keeping board sparse)
+        # Empty cells: LINEAR bonus/penalty (encourage keeping board sparse)
         empty_before = np.sum(board_before == 0)
         empty_after = np.sum(board_after == 0)
-        reward += (empty_after - empty_before) * 2.0
+        difference = empty_after - empty_before
+        # usually -1 for loosing cell -> -0.5
+        # or +1 for 1 merged cell -> 0.5
+        reward += difference * 0.5
 
-        # Bonus for max tile in corner
+        # Bonus for max tile in corner (ANY corner)
         max_tile = np.max(board_after)
-        if board_after[0, 0] == max_tile:  # Top-left corner
-            reward += 5.0
+        corners = [
+            board_after[0, 0],
+            board_after[0, 3],
+            board_after[3, 0],
+            board_after[3, 3],
+        ]
+        if max_tile in corners:
+            reward += 2.0
 
         # Penalty for game over
-        if game_over:
-            reward -= 50.0
-
-        return reward
-
-    @staticmethod
-    def log_reward(points_gained: int, game_over: bool) -> float:
-        """
-        Logarithmic reward scaling
-
-        Args:
-            points_gained: Points from the move
-            game_over: Whether game ended
-
-        Returns:
-            Reward value
-        """
-        if points_gained > 0:
-            reward = float(np.log2(points_gained + 1))
-        else:
-            reward = 0.0
-
         if game_over:
             reward -= 5.0
 
@@ -532,10 +532,8 @@ if __name__ == "__main__":
 
     simple = RewardShaper.simple_reward(points_gained=4, game_over=False)
     shaped = RewardShaper.shaped_reward(4, board_before, board_after, False)
-    log_r = RewardShaper.log_reward(points_gained=4, game_over=False)
 
     print(f"   Simple reward: {simple:.2f}")
     print(f"   Shaped reward: {shaped:.2f}")
-    print(f"   Log reward: {log_r:.2f}")
 
     print("\nAll tests completed successfully!")
