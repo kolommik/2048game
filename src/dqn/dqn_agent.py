@@ -397,6 +397,7 @@ class DQNAgent:
                     print(f"Avg Max Tile: {eval_stats['avg_max_tile']:.0f}")
                     print(f"Best Tile: {eval_stats['best_tile']}")
                     print(f"{'='*40}\n")
+                self.metrics.add_evaluation(episode, eval_stats)
 
             # Save model
             if (episode + 1) % save_freq == 0:

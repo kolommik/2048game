@@ -249,6 +249,7 @@ class TrainingMetrics:
         self.epsilons = []
         self.avg_q_values = []
         self.episode_lengths = []
+        self.evaluations = []
 
     def add_episode(
         self,
@@ -271,6 +272,11 @@ class TrainingMetrics:
         # Convert to Python native types
         self.losses.append(float(loss))
         self.avg_q_values.append(float(avg_q_value))
+
+    def add_evaluation(self, episode, eval_results):
+        self.evaluations.append(
+            {"episode": episode, **eval_results}
+        )
 
     def get_recent_stats(self, n: int = 100) -> dict:
         """
