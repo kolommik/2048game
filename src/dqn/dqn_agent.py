@@ -377,11 +377,28 @@ class DQNAgent:
             # Logging
             if verbose and (episode + 1) % 10 == 0:
                 stats = self.metrics.get_recent_stats(n=10)
+
+                recent_losses = (
+                    self.metrics.losses[-100:]
+                    if len(self.metrics.losses) >= 100
+                    else self.metrics.losses
+                )
+                avg_loss = np.mean(recent_losses) if recent_losses else 0.0
+
+                recent_q = (
+                    self.metrics.avg_q_values[-100:]
+                    if len(self.metrics.avg_q_values) >= 100
+                    else self.metrics.avg_q_values
+                )
+                avg_q = np.mean(recent_q) if recent_q else 0.0
+
                 elapsed = time.time() - start_time
                 print(
                     f"Episode {episode+1}/{num_episodes} | "
                     f"Avg Score: {stats['avg_score']:.1f} | "
                     f"Avg Tile: {stats['avg_max_tile']:.0f} | "
+                    f"Loss: {avg_loss:.4f} | "
+                    f"Q: {avg_q:.1f} | "
                     f"Epsilon: {self.epsilon_scheduler.get_epsilon():.3f} | "
                     f"Steps: {self.total_steps} | "
                     f"Time: {elapsed:.1f}s"
@@ -390,14 +407,37 @@ class DQNAgent:
             # Evaluation
             if (episode + 1) % eval_freq == 0:
                 eval_stats = self.evaluate(num_games=eval_games, verbose=False)
+
+                recent_losses = (
+                    self.metrics.losses[-1000:]
+                    if len(self.metrics.losses) >= 1000
+                    else self.metrics.losses
+                )
+                recent_q = (
+                    self.metrics.avg_q_values[-1000:]
+                    if len(self.metrics.avg_q_values) >= 1000
+                    else self.metrics.avg_q_values
+                )
+                avg_loss = np.mean(recent_losses) if recent_losses else 0.0
+                avg_q = np.mean(recent_q) if recent_q else 0.0
+
                 if verbose:
-                    print(f"\n--- Evaluation (Episode {episode+1}) ---")
-                    print(f"Avg Score: {eval_stats['avg_score']:.1f}")
-                    print(f"Best Score: {eval_stats['best_score']}")
-                    print(f"Avg Max Tile: {eval_stats['avg_max_tile']:.0f}")
-                    print(f"Best Tile: {eval_stats['best_tile']}")
-                    print(f"{'='*40}\n")
-                self.metrics.add_evaluation(episode, eval_stats)
+                    print(f"\n{'='*50}")
+                    print(f"Evaluation - Episode {episode+1}")
+                    print(f"{'='*50}")
+                    print("Game Performance:")
+                    print(f"  Avg Score:    {eval_stats['avg_score']:.1f}")
+                    print(f"  Best Score:   {eval_stats['best_score']}")
+                    print(f"  Avg Max Tile: {eval_stats['avg_max_tile']:.0f}")
+                    print(f"  Best Tile:    {eval_stats['best_tile']}")
+                    print("\nTraining Metrics:")
+                    print(f"  Avg Loss:     {avg_loss:.4f}")
+                    print(f"  Avg Q-value:  {avg_q:.1f}")
+                    print(f"  Total Steps:  {self.total_steps}")
+                    print(f"  Train Steps:  {self.training_steps}")
+                    print(f"{'='*50}\n")
+
+                self.metrics.add_evaluation(episode + 1, eval_stats)
 
             # Save model
             if (episode + 1) % save_freq == 0:

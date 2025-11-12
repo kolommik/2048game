@@ -274,9 +274,7 @@ class TrainingMetrics:
         self.avg_q_values.append(float(avg_q_value))
 
     def add_evaluation(self, episode, eval_results):
-        self.evaluations.append(
-            {"episode": episode, **eval_results}
-        )
+        self.evaluations.append({"episode": episode, **eval_results})
 
     def get_recent_stats(self, n: int = 100) -> dict:
         """
@@ -341,6 +339,7 @@ class TrainingMetrics:
             "epsilons": [float(x) for x in self.epsilons],
             "avg_q_values": [float(x) for x in self.avg_q_values],
             "episode_lengths": [int(x) for x in self.episode_lengths],
+            "evaluations": convert_to_python_type(self.evaluations),
         }
 
         with open(filepath, "w") as f:
@@ -360,6 +359,7 @@ class TrainingMetrics:
         self.epsilons = data["epsilons"]
         self.avg_q_values = data["avg_q_values"]
         self.episode_lengths = data["episode_lengths"]
+        self.evaluations = data.get("evaluations", [])
 
 
 class RewardShaper:
