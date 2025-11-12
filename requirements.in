@@ -4,3 +4,4 @@ pandas
 streamlit
 plotly
 torch>=2.9
+scipy

@@ -58,6 +58,7 @@ numpy==2.3.4
     #   -r requirements.in
     #   pandas
     #   pydeck
+    #   scipy
     #   streamlit
 packaging==25.0
     # via
@@ -99,6 +100,8 @@ rpds-py==0.28.0
     # via
     #   jsonschema
     #   referencing
+scipy==1.16.3
+    # via -r requirements.in
 setuptools==80.9.0
     # via torch
 six==1.17.0
