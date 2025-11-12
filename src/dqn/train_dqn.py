@@ -10,7 +10,7 @@ import numpy as np
 
 # Game and agents
 from game2048_engine import Game2048
-from dqn_agent import DQNAgent
+from dqn.dqn_agent import DQNAgent
 
 # For comparison with baseline agents
 try:

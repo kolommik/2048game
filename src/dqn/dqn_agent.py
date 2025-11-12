@@ -15,7 +15,7 @@ try:
     import torch
     import torch.nn as nn
     import torch.optim as optim
-    from dqn_components import (
+    from dqn.dqn_components import (
         QNetwork,
         ReplayBuffer,
         StatePreprocessor,
@@ -60,7 +60,7 @@ class DQNAgent:
         train_freq: int = 4,
         min_replay_size: int = 1000,
         # Reward function
-        reward_type: str = "simple",  # 'simple', 'shaped', or 'log'
+        reward_type: str = "simple",  # 'simple', 'shaped'
         # Device
         device: str = "cpu",
     ):
@@ -209,8 +209,6 @@ class DQNAgent:
             return RewardShaper.shaped_reward(
                 points_gained, board_before, board_after, game_over
             )
-        elif self.reward_type == "log":
-            return RewardShaper.log_reward(points_gained, game_over)
         else:
             return float(points_gained)
 
@@ -239,9 +237,21 @@ class DQNAgent:
         # Compute current Q values
         current_q_values = self.q_network(states).gather(1, actions.unsqueeze(1))
 
-        # Compute target Q values
+        # Compute target Q values (Double DQN)
         with torch.no_grad():
-            next_q_values = self.target_network(next_states).max(1)[0]
+            # --------
+            # Vanila DQN
+            # next_q_values = self.target_network(next_states).max(1)[0]
+
+            # Double DQN: select actions with Q-network, evaluate with target network
+            # This reduces overestimation bias
+            best_next_actions = self.q_network(next_states).argmax(1)
+            next_q_values = (
+                self.target_network(next_states)
+                .gather(1, best_next_actions.unsqueeze(1))
+                .squeeze()
+            )
+            # ---------
             target_q_values = rewards + (1 - dones) * self.gamma * next_q_values
 
         # Compute loss
@@ -251,7 +261,9 @@ class DQNAgent:
         self.optimizer.zero_grad()
         loss.backward()
         # Gradient clipping to prevent exploding gradients
-        torch.nn.utils.clip_grad_norm_(self.q_network.parameters(), max_norm=10.0)
+        torch.nn.utils.clip_grad_norm_(
+            self.q_network.parameters(), max_norm=1.0
+        )  # 10.0->1.0 more stable
         self.optimizer.step()
 
         self.training_steps += 1
