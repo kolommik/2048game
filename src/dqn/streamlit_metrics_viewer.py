@@ -8,6 +8,7 @@ import json
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
+from scipy.stats import pearsonr
 
 st.set_page_config(page_title="DQN Metrics Viewer", page_icon="📊", layout="wide")
 
@@ -49,6 +50,139 @@ if uploaded_file is not None:
 
         # Summary statistics
         st.subheader("📈 Summary Statistics")
+
+        # Warmup filter
+        st.markdown("**Filter warmup period (high epsilon exploration):**")
+        max_episodes = len(metrics["episodes"])
+        warmup_filter = st.slider(
+            "Skip first N episodes",
+            min_value=0,
+            max_value=min(2000, max_episodes - 100),
+            value=min(200, max_episodes // 10),
+            step=50,
+            help="Filter out early episodes where agent was mostly exploring randomly",
+        )
+
+        # Apply filter
+        if warmup_filter > 0:
+            filter_idx = warmup_filter
+            filtered_episodes = metrics["episodes"][filter_idx:]
+            filtered_scores = metrics["scores"][filter_idx:]
+            filtered_tiles = metrics["max_tiles"][filter_idx:]
+            st.info(
+                f"📊 Showing data from episode {warmup_filter} to {max_episodes-1} ({len(filtered_episodes)} episodes)"
+            )
+        else:
+            filtered_episodes = metrics["episodes"]
+            filtered_scores = metrics["scores"]
+            filtered_tiles = metrics["max_tiles"]
+
+        col1, col2, col3, col4 = st.columns(4)
+
+        with col1:
+            st.metric("Total Episodes", len(metrics["episodes"]))
+            st.metric("Filtered Episodes", len(filtered_episodes))
+
+        with col2:
+            st.metric("Avg Score (filtered)", f"{np.mean(filtered_scores):.0f}")
+            st.metric("Best Score", int(np.max(filtered_scores)))
+
+        with col3:
+            st.metric("Avg Max Tile (filtered)", f"{np.mean(filtered_tiles):.0f}")
+            st.metric("Best Tile", int(np.max(filtered_tiles)))
+
+        with col4:
+            reached_512 = sum(1 for t in filtered_tiles if t >= 512)
+            reached_1024 = sum(1 for t in filtered_tiles if t >= 1024)
+            reached_2048 = sum(1 for t in filtered_tiles if t >= 2048)
+            st.metric("Reached 512", f"{reached_512}x")
+            st.metric("Reached 1024", f"{reached_1024}x")
+
+        # Q-value / Score correlation analysis
+        if (
+            "avg_q_values" in metrics
+            and metrics["avg_q_values"]
+            and len(metrics["avg_q_values"]) > 0
+        ):
+            st.markdown("---")
+            st.subheader("🔗 Q-Value / Score Correlation Analysis")
+
+            # Calculate average Q per episode (approximate)
+            steps_per_episode = len(metrics["avg_q_values"]) / len(metrics["episodes"])
+
+            if steps_per_episode > 0:
+                # Bin Q-values by episodes
+                episode_q_values = []
+                for i in range(len(filtered_episodes)):
+                    episode_idx = i + warmup_filter
+                    start_step = int(episode_idx * steps_per_episode)
+                    end_step = int((episode_idx + 1) * steps_per_episode)
+                    if start_step < len(metrics["avg_q_values"]):
+                        q_slice = metrics["avg_q_values"][
+                            start_step : min(end_step, len(metrics["avg_q_values"]))
+                        ]
+                        if q_slice:
+                            episode_q_values.append(np.mean(q_slice))
+                        else:
+                            episode_q_values.append(np.nan)
+                    else:
+                        episode_q_values.append(np.nan)
+
+                # Remove NaN values
+                valid_indices = [
+                    i for i, q in enumerate(episode_q_values) if not np.isnan(q)
+                ]
+                if valid_indices:
+                    valid_scores = [filtered_scores[i] for i in valid_indices]
+                    valid_q_values = [episode_q_values[i] for i in valid_indices]
+
+                    # Calculate Q/Score ratio
+                    ratios = [
+                        q / s if s > 0 else 0
+                        for q, s in zip(valid_q_values, valid_scores)
+                    ]
+                    avg_ratio = np.mean(ratios)
+
+                    # Calculate correlation
+                    if len(valid_scores) > 10:
+                        correlation, p_value = pearsonr(valid_scores, valid_q_values)
+                    else:
+                        correlation, p_value = 0, 1
+
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        st.metric(
+                            "Avg Q/Score Ratio",
+                            f"{avg_ratio:.3f}",
+                            help="Healthy range: 0.3-0.7 for 2048",
+                        )
+                    with col2:
+                        st.metric(
+                            "Q-Score Correlation",
+                            f"{correlation:.3f}",
+                            help="Good: >0.7, Problem: <0.3",
+                        )
+                    with col3:
+                        health = "✅ Healthy" if 0.3 <= avg_ratio <= 0.7 else "⚠️ Check"
+                        st.metric("Training Health", health)
+
+                    # Explanation
+                    if avg_ratio > 1.0:
+                        st.warning(
+                            "⚠️ Q-values may be overestimated (ratio > 1.0). Consider Double DQN or lower learning rate"
+                        )
+                    elif avg_ratio < 0.2:
+                        st.warning(
+                            "⚠️ Q-values may be underestimated (ratio < 0.2). Check reward function"
+                        )
+                    else:
+                        st.success("✅ Q/Score ratio is in healthy range!")
+
+                    if correlation < 0.5:
+                        st.warning(
+                            "⚠️ Low correlation between Q-values and Score. Need more training or check reward signal"
+                        )
+
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
@@ -97,10 +231,11 @@ if uploaded_file is not None:
             horizontal_spacing=0.1,
         )
 
-        episodes = metrics["episodes"]
+        episodes = filtered_episodes
+        scores = filtered_scores
+        max_tiles = filtered_tiles
 
         # 1. Scores
-        scores = metrics["scores"]
         fig.add_trace(
             go.Scatter(
                 x=episodes,
