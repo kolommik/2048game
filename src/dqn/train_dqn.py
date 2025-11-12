@@ -329,7 +329,7 @@ if __name__ == "__main__":
 
     # Training hyperparameters
     parser.add_argument("--lr", type=float, default=1e-4, help="Learning rate")
-    parser.add_argument("--gamma", type=float, default=0.99, help="Discount factor")
+    parser.add_argument("--gamma", type=float, default=0.95, help="Discount factor")
     parser.add_argument("--batch-size", type=int, default=64, help="Batch size")
     parser.add_argument(
         "--buffer-capacity", type=int, default=10000, help="Replay buffer capacity"
